@@ -1,62 +1,53 @@
 #include "constants.h"
 // #include <NewPing.h> NewPing NewPing(TRIG, ECHO, MAX_DISTANCE)
 
-// Sensors
 int irRead;
 
-char currentWheelState = 'S';
+char currentDirection = 'S';
+char prevTurn;
+int motorNowTurning = 0;
 
-unsigned long nextIterTime = 1000;
+unsigned long nextIterTime = 0;
 unsigned long currentTime;
 
-void setMotors(char state);
-void assignMotorState(int motor, int state);
+void pinModeAll(int const arr[], int size, int pin_mode);
+
+int setMotors(char state);
+void setMotorState(int motor, int state);
 void setMotorSpeed(int motor, int speed);
 
 void setup()
 {
   // IR Setup
-  for (int i = 0; i < 2; i++)
-  {
-    pinMode(IR::Pins[i], INPUT);
-  }
+  pinModeAll(IR::Pins, 2, INPUT);
 
   // BO Setup
-  for (int i = 0; i < 3; i++)
-  {
-    pinMode(Motor::Pins[0][i], OUTPUT);
-    pinMode(Motor::Pins[1][i], OUTPUT);
-  }
+  pinModeAll(Motor::Pins[0], 3, OUTPUT);
+  pinModeAll(Motor::Pins[1], 3, OUTPUT);
 }
 
 void loop()
 {
-  currentTime = millis(); // Current time-stamp
 
-  if (mainEnable)
+  irRead = (digitalRead(IR::Pins[0]) << 1) | digitalRead(IR::Pins[1]);
+
+  motorNowTurning = setMotors(Motor::MovementDirection[irRead]);
+
+  if (motorNowTurning)
   {
-    if (currentTime > nextIterTime)
-    {
-      irRead = digitalRead(IR::Pins[0]) << 1 | digitalRead(IR::Pins[1]);
-
-      setMotors(Motor::wheelStates[irRead]);
-
-      if (currentTime - nextIterTime < 500) // If there is no sudden jump in time
-      {
-        nextIterTime = currentTime + Iteration::Line; // Wait for 20 ms before next loop
-      }
-      else
-      {
-        nextIterTime += Iteration::Line * 2; // Wait for (about) 20 ms (assuming it took 20 ms for this to run)
-      }
-    }
-  }
-  else
-  {
+    nextIterTime = millis() + Iteration::Line;
   }
 }
 
-void assignMotorState(int motor, int state)
+void pinModeAll(int const arr[], int size, int pin_mode)
+{
+  for (int i = 0; i < size; i++)
+  {
+    pinMode(arr[i], pin_mode);
+  }
+};
+
+void setMotorState(int motor, int state)
 {
   digitalWrite(Motor::Pins[motor][0], Motor::Configs[state][0]);
   digitalWrite(Motor::Pins[motor][1], Motor::Configs[state][1]);
@@ -67,42 +58,44 @@ void setMotorSpeed(int motor, int speed)
   analogWrite(Motor::Pins[motor][2], speed);
 }
 
-void setMotors(char wheelState)
+int setMotors(char direction)
 {
-  if (wheelState != currentWheelState)
+  if (direction != currentDirection)
   {
-    if (wheelState == 'S')
-    {
-      setMotorSpeed(0, 0);
-      setMotorSpeed(1, 0);
-      assignMotorState(0, Motor::STOP);
-      assignMotorState(1, Motor::STOP);
-    }
-    else
-    {
-      if (currentWheelState == 'S')
-      {
-        assignMotorState(0, Motor::FORWARD);
-        assignMotorState(1, Motor::FORWARD);
-      }
 
-      if (wheelState == 'F')
-      {
-        setMotorSpeed(0, Motor::SPEED);
-        setMotorSpeed(1, Motor::SPEED);
-      }
-      else if (wheelState == 'L')
-      {
-        setMotorSpeed(0, Motor::TURN_SPEED);
-        setMotorSpeed(1, Motor::SPEED);
-      }
-      else
-      {
-        setMotorSpeed(0, Motor::SPEED);
-        setMotorSpeed(1, Motor::TURN_SPEED);
-      }
+    if (direction == 'S')
+    {
+      currentDirection = direction;
+      setMotorState(0, Motor::STOP);
+      setMotorState(1, Motor::STOP);
     }
-
-    currentWheelState = wheelState;
+    else if (direction == 'R')
+    {
+      currentDirection = direction;
+      setMotorSpeed(0, Motor::FAST_SPEED);
+      setMotorSpeed(1, Motor::FAST_SPEED);
+      setMotorState(0, Motor::BACKWARD);
+      setMotorState(1, Motor::FORWARD);
+      return 1;
+    }
+    else if (direction == 'L')
+    {
+      currentDirection = direction;
+      setMotorSpeed(0, Motor::FAST_SPEED);
+      setMotorSpeed(1, Motor::FAST_SPEED);
+      setMotorState(0, Motor::FORWARD);
+      setMotorState(1, Motor::BACKWARD);
+      return 1;
+    }
+    else if (millis() >= nextIterTime)
+    {
+      currentDirection = direction;
+      setMotorSpeed(0, Motor::SPEED);
+      setMotorSpeed(1, Motor::SPEED);
+      setMotorState(0, Motor::FORWARD);
+      setMotorState(1, Motor::FORWARD);
+    }
   }
+
+  return 0;
 }
