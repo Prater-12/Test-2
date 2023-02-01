@@ -17,8 +17,6 @@ int setMotors(char direction, int force);
 void setMotorState(int motor, int state);
 void setMotorSpeed(int motor, int speed);
 
-void echoCheck();
-
 void IR_ReadCycle();
 
 void setup()
