@@ -1,5 +1,3 @@
-// main.cpp
-
 #include "values.h"
 #include <stdlib.h>
 
