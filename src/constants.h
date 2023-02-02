@@ -1,11 +1,13 @@
 #include <Arduino.h>
 #include <Servo.h>
 #include <NewPing.h>
+#include <SoftwareSerial.h>
 
 #ifndef MS_CONSTANTS
 #define MS_CONSTANTS
 
 int const mainEnable = 1;
+int botMode = 0; // Line, Line with obj detection, Fire detection, Water with fire detection, Remote Control
 
 struct Iterator
 {
@@ -22,26 +24,38 @@ struct Iterator
         delayMS = d;
         prevIterTimestamp = nts;
     };
+
+    int checkCoolDown(unsigned long timestamp)
+    {
+        return timestamp - prevIterTimestamp > delayMS;
+    }
 };
 
 namespace Iteration
 {
     Iterator Line(36);
     Iterator Ping(50);
+    Iterator Arm(10);
+    Iterator FlameCheck(6000);
+    Iterator FireDouse(5000);
 }
 
 namespace Setup
 {
-    int botMode = 0; // Line, Line with obj detection, Fire detection, Water with fire detection, Remote Control
+    int progress = 0;         // Progress into finishing setup, set to 2 to skip
+    int waitUntilRelease = 0; // Only used when progress is set to 1
+
+    int const PRESS_TIME = 100;
+    int const HOLD_TIME = 2000;
+
     int const LINE = 0;
     int const LINE_WITH_OBJ = 1;
     int const FIRE = 2;
     int const FIRE_WITH_WATER = 3;
     int const RC = 4;
 
-    int innerSide = 0;
-    int const LEFT = 0;
-    int const RIGHT = 180;
+    int baseAngleIndex = 0;
+    int const ARM_BASE_ANGLES[3] = {0, 90, 175};
 
     int const BUTTON_PIN = A0;
     unsigned long lastLeft = 0;
@@ -61,10 +75,10 @@ namespace Motor
     int const FORWARD = 1;
     int const BACKWARD = 2;
 
-    char const MovementDirection[4] = {'F', 'R', 'L', 'S'};
+    char const MovementDirection[5] = {'F', 'R', 'L', 'S', 'B'};
 
-    int const SPEED = 120;
-    int const SLOW_SPEED = SPEED * (0.8);
+    int const SPEED = 150;
+    int const SLOW_SPEED = 90;
     int const FAST_SPEED = 200;
     int const TURN_SPEED_DELTA = 50;
 
@@ -84,7 +98,7 @@ namespace Ultrasonic
 
     NewPing sensor(TRIGGER, ECHO, MAX_DISTANCE);
 
-    int const SERVO_PIN = 9;
+    int const SERVO_PIN = 10;
     Servo servo;
 
     int const servoPositions[5] = {30, 60, 90, 120, 150};
@@ -115,5 +129,27 @@ namespace Ultrasonic
     }
 
 } // namespace name
+
+namespace Arm
+{
+    int const BASE_SERVO_PIN = 9;
+    Servo baseServo;
+
+    int const END_SERVO_PIN = 10;
+    Servo endServo;
+
+    int const PUMP_RELAY = 12;
+
+    int endPosition = 90;
+    int diff = 1;
+
+    int fireProbability = 0; // 0 to 2
+
+    int const MAX_ANGLE = 135;
+    int const MIN_ANGLE = 65;
+
+    int const SensorPins[2] = {A4, A5}; // Lower,Upper
+    int sensorReadings[2] = {1023, 1023};
+}
 
 #endif
