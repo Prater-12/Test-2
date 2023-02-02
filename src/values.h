@@ -6,7 +6,6 @@
 #ifndef MS_CONSTANTS
 #define MS_CONSTANTS
 
-int const mainEnable = 1;
 int botMode = 0; // Line, Line with obj detection, Fire detection, Water with fire detection, Remote Control
 
 struct Iterator
